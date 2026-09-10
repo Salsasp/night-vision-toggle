@@ -22,6 +22,14 @@ namespace NightVisionToggle
         /// <summary>Stack attribute holding the toggle state. Absent means on, so existing masks keep working.</summary>
         public const string EnabledAttribute = "nightVisionToggleEnabled";
 
+        // Placeholder sounds. Drop the real files at assets/nightvisiontoggle/sounds/<name>.ogg
+        // and they are picked up automatically. Until they exist the toggle is silent.
+        public const string EnableSoundPath = "nightvisiontoggle:sounds/nightvision-toggle-on";
+        public const string DisableSoundPath = "nightvisiontoggle:sounds/nightvision-toggle-off";
+
+        const float SoundRange = 8f;
+        const float SoundVolume = 1f;
+
         // In singleplayer the client and server both instantiate this mod system in the same
         // process, so the patches are applied once and removed once.
         static Harmony harmony;
@@ -100,6 +108,7 @@ namespace NightVisionToggle
             // network round trip. The server confirms by syncing the slot back down.
             SetEnabled(stack, enabled);
             clientChannel?.SendPacket(new NightVisionTogglePacket() { Enabled = enabled });
+            PlayToggleSound(capi.World.Player, enabled);
 
             capi.ShowChatMessage(Lang.Get(enabled
                 ? "nightvisiontoggle:message-enabled"
@@ -118,6 +127,30 @@ namespace NightVisionToggle
 
             SetEnabled(stack, packet.Enabled);
             slot.MarkDirty();
+            PlayToggleSound(fromPlayer, packet.Enabled);
+        }
+
+        /// <summary>
+        /// Plays the toggle sound. Called on both sides: the client plays it immediately so the
+        /// wearer hears it without waiting for a round trip, and the server sends it to everyone
+        /// else in earshot. Passing the toggling player as dualCallByPlayer server side is what
+        /// keeps them from hearing it twice.
+        /// </summary>
+        void PlayToggleSound(IPlayer player, bool enabled)
+        {
+            if (player == null) return;
+
+            string path = enabled ? EnableSoundPath : DisableSoundPath;
+            if (!api.Assets.Exists(new AssetLocation(path + ".ogg"))) return;
+
+            api.World.PlaySoundAt(
+                new AssetLocation(path),
+                player,
+                api.Side == EnumAppSide.Server ? player : null,
+                randomizePitch: false,
+                range: SoundRange,
+                volume: SoundVolume
+            );
         }
 
         public static bool IsEnabled(ItemStack stack)

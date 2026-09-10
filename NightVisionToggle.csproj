@@ -53,7 +53,7 @@
   <ItemGroup>
     <ModFiles Include="modinfo.json" />
     <ModFiles Include="modicon.png" Condition="Exists('modicon.png')" />
-    <ModAssets Include="assets\**\*" />
+    <ModAssets Include="assets\**\*" Exclude="assets\**\.gitkeep" />
   </ItemGroup>
 
   <!-- Assemble a loadable mod folder next to the build output. -->
@@ -61,6 +61,8 @@
     <PropertyGroup>
       <StagePath>$(OutputPath)mod\</StagePath>
     </PropertyGroup>
+    <!-- Start clean so removed or renamed assets never linger in a package. -->
+    <RemoveDir Directories="$(StagePath)" />
     <Copy SourceFiles="@(ModFiles)" DestinationFolder="$(StagePath)" />
     <Copy SourceFiles="@(ModAssets)" DestinationFiles="@(ModAssets->'$(StagePath)assets\%(RecursiveDir)%(Filename)%(Extension)')" />
     <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="$(StagePath)" />
@@ -71,10 +73,15 @@
   <Target Name="Deploy" DependsOnTargets="Build;StageMod">
     <ItemGroup>
       <StagedFiles Include="$(StagePath)**\*" />
+      <!-- A packaged zip sitting next to the deployed folder means two mods claim the same
+           modid, and the game can end up loading the assembly from both paths in one process. -->
+      <StaleZips Include="$(VintageStoryDataPath)\Mods\nightvisiontoggle*.zip" />
     </ItemGroup>
+    <Message Importance="high" Text="Removing conflicting packaged copy: %(StaleZips.Identity)" Condition="'@(StaleZips)' != ''" />
+    <Delete Files="@(StaleZips)" />
     <RemoveDir Directories="$(ModDeployPath)" />
     <Copy SourceFiles="@(StagedFiles)" DestinationFiles="@(StagedFiles->'$(ModDeployPath)\%(RecursiveDir)%(Filename)%(Extension)')" />
-    <Message Importance="high" Text="Deployed mod to $(ModDeployPath)" />
+    <Message Importance="high" Text="Deployed mod to $(ModDeployPath). Fully restart Vintage Story to pick up code changes." />
   </Target>
 
   <!-- dotnet build -c Release -t:Package -> releases/nightvisiontoggle_$(Version).zip -->
