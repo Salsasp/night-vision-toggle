@@ -1,8 +1,8 @@
 {
   "hotkey-nightvisiontoggle": "Toggle night vision",
   "ingameerror-nodevice": "You are not wearing a night vision mask",
-  "message-enabled": "Night vision enabled",
-  "message-disabled": "Night vision disabled, fuel is no longer being used",
+  "message-enabled": "",
+  "message-disabled": "",
   "heldinfo-enabled": "Night vision: on",
   "heldinfo-disabled": "Night vision: off (not using fuel)"
 }
