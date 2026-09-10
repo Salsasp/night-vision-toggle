@@ -53,6 +53,7 @@ namespace NightVisionToggle
             {
                 harmony = new Harmony(HarmonyId);
                 harmony.PatchAll();
+                CombatOverhaulCompat.TryPatch(harmony, Mod?.Logger);
             }
         }
 
@@ -93,12 +94,21 @@ namespace NightVisionToggle
 
         bool OnToggleHotkey(KeyCombination comb)
         {
-            var slot = GetHeadArmorSlot(capi.World?.Player);
+            var slot = GetWornNightVisionSlot(capi.World?.Player);
             var stack = slot?.Itemstack;
 
             if (stack?.Collectible is not ItemNightvisiondevice)
             {
                 capi.TriggerIngameError(this, "nonightvisiondevice", Lang.Get("nightvisiontoggle:ingameerror-nodevice"));
+                return true;
+            }
+
+            // Without the mod on the server the toggle cannot hold: the server keeps draining
+            // fuel and its next inventory sync overwrites the local change a few seconds later.
+            // Fail loudly rather than let the effect silently flicker back on.
+            if (clientChannel?.Connected != true)
+            {
+                capi.TriggerIngameError(this, "servermissingmod", Lang.Get("nightvisiontoggle:ingameerror-servermissing"));
                 return true;
             }
 
@@ -110,16 +120,12 @@ namespace NightVisionToggle
             clientChannel?.SendPacket(new NightVisionTogglePacket() { Enabled = enabled });
             PlayToggleSound(capi.World.Player, enabled);
 
-            capi.ShowChatMessage(Lang.Get(enabled
-                ? "nightvisiontoggle:message-enabled"
-                : "nightvisiontoggle:message-disabled"));
-
             return true;
         }
 
         void OnTogglePacketReceived(IServerPlayer fromPlayer, NightVisionTogglePacket packet)
         {
-            var slot = GetHeadArmorSlot(fromPlayer);
+            var slot = GetWornNightVisionSlot(fromPlayer);
             var stack = slot?.Itemstack;
 
             if (stack?.Collectible is not ItemNightvisiondevice) return;
@@ -163,13 +169,27 @@ namespace NightVisionToggle
             stack?.Attributes?.SetBool(EnabledAttribute, enabled);
         }
 
-        public static ItemSlot GetHeadArmorSlot(IPlayer player)
+        /// <summary>
+        /// Finds the worn night vision mask. Checks the vanilla head armour slot first, then falls
+        /// back to scanning the character inventory, because mods that rework armour (Combat
+        /// Overhaul among them) move the mask into a slot at a different index. Anything sitting
+        /// in the character inventory is by definition equipped, so the scan cannot pick up a
+        /// spare mask out of a backpack.
+        /// </summary>
+        public static ItemSlot GetWornNightVisionSlot(IPlayer player)
         {
             var inv = player?.InventoryManager?.GetOwnInventory(GlobalConstants.characterInvClassName);
             if (inv == null) return null;
 
             int index = (int)EnumCharacterDressType.ArmorHead;
-            return index < inv.Count ? inv[index] : null;
+            if (index < inv.Count && inv[index]?.Itemstack?.Collectible is ItemNightvisiondevice) return inv[index];
+
+            foreach (var slot in inv)
+            {
+                if (slot?.Itemstack?.Collectible is ItemNightvisiondevice) return slot;
+            }
+
+            return null;
         }
     }
 }

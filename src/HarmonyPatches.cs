@@ -36,7 +36,7 @@ namespace NightVisionToggle
             var capi = Capi;
             if (capi == null) return true;
 
-            var stack = NightVisionToggleModSystem.GetHeadArmorSlot(capi.World?.Player)?.Itemstack;
+            var stack = NightVisionToggleModSystem.GetWornNightVisionSlot(capi.World?.Player)?.Itemstack;
             if (stack?.Collectible is not ItemNightvisiondevice) return true;
             if (NightVisionToggleModSystem.IsEnabled(stack)) return true;
 
