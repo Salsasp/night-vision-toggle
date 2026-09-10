@@ -1,0 +1,88 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>NightVisionToggle</AssemblyName>
+    <RootNamespace>NightVisionToggle</RootNamespace>
+    <Version>1.0.0</Version>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <!-- Override either of these with the VINTAGE_STORY / VINTAGE_STORY_DATA environment variables. -->
+  <PropertyGroup>
+    <VintageStoryPath Condition="'$(VINTAGE_STORY)' != ''">$(VINTAGE_STORY)</VintageStoryPath>
+    <VintageStoryPath Condition="'$(VintageStoryPath)' == ''">$(AppData)\Vintagestory</VintageStoryPath>
+
+    <VintageStoryDataPath Condition="'$(VINTAGE_STORY_DATA)' != ''">$(VINTAGE_STORY_DATA)</VintageStoryDataPath>
+    <VintageStoryDataPath Condition="'$(VintageStoryDataPath)' == ''">$(AppData)\VintagestoryData</VintageStoryDataPath>
+
+    <ModDeployPath>$(VintageStoryDataPath)\Mods\nightvisiontoggle</ModDeployPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="VintagestoryAPI">
+      <HintPath>$(VintageStoryPath)\VintagestoryAPI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="VintagestoryLib">
+      <HintPath>$(VintageStoryPath)\VintagestoryLib.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="VSSurvivalMod">
+      <HintPath>$(VintageStoryPath)\Mods\VSSurvivalMod.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(VintageStoryPath)\Lib\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="protobuf-net">
+      <HintPath>$(VintageStoryPath)\Lib\protobuf-net.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>$(VintageStoryPath)\Lib\Newtonsoft.Json.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ModFiles Include="modinfo.json" />
+    <ModFiles Include="modicon.png" Condition="Exists('modicon.png')" />
+    <ModAssets Include="assets\**\*" />
+  </ItemGroup>
+
+  <!-- Assemble a loadable mod folder next to the build output. -->
+  <Target Name="StageMod" AfterTargets="Build">
+    <PropertyGroup>
+      <StagePath>$(OutputPath)mod\</StagePath>
+    </PropertyGroup>
+    <Copy SourceFiles="@(ModFiles)" DestinationFolder="$(StagePath)" />
+    <Copy SourceFiles="@(ModAssets)" DestinationFiles="@(ModAssets->'$(StagePath)assets\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="$(StagePath)" />
+    <Copy SourceFiles="$(OutputPath)$(AssemblyName).pdb" DestinationFolder="$(StagePath)" Condition="Exists('$(OutputPath)$(AssemblyName).pdb')" />
+  </Target>
+
+  <!-- dotnet build -t:Deploy -> installs into the local Vintage Story mods folder. -->
+  <Target Name="Deploy" DependsOnTargets="Build;StageMod">
+    <ItemGroup>
+      <StagedFiles Include="$(StagePath)**\*" />
+    </ItemGroup>
+    <RemoveDir Directories="$(ModDeployPath)" />
+    <Copy SourceFiles="@(StagedFiles)" DestinationFiles="@(StagedFiles->'$(ModDeployPath)\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Message Importance="high" Text="Deployed mod to $(ModDeployPath)" />
+  </Target>
+
+  <!-- dotnet build -c Release -t:Package -> releases/nightvisiontoggle_$(Version).zip -->
+  <Target Name="Package" DependsOnTargets="Build;StageMod">
+    <MakeDir Directories="releases" />
+    <Delete Files="releases\nightvisiontoggle_$(Version).zip" />
+    <ZipDirectory SourceDirectory="$(StagePath)" DestinationFile="releases\nightvisiontoggle_$(Version).zip" />
+    <Message Importance="high" Text="Packaged releases\nightvisiontoggle_$(Version).zip" />
+  </Target>
+
+</Project>
