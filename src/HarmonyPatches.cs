@@ -23,25 +23,26 @@ namespace NightVisionToggle
     }
 
     /// <summary>
-    /// Forces the night vision shader strength to zero while the worn mask is toggled off.
-    /// Vanilla is left to run untouched in every other case.
+    /// Scales the strength vanilla just applied by the fade factor. Letting vanilla compute its
+    /// own fuel based value first means the toggle and the ramp ride on top of it instead of
+    /// reimplementing it: a factor of 0 is fully off, 1 is untouched vanilla behaviour.
     /// </summary>
     [HarmonyPatch(typeof(ModSystemNightVision), nameof(ModSystemNightVision.OnRenderFrame))]
     public static class NightVisionRenderPatch
     {
         public static ICoreClientAPI Capi;
 
-        static bool Prefix()
+        static void Postfix()
         {
             var capi = Capi;
-            if (capi == null) return true;
+            if (capi == null) return;
 
-            var stack = NightVisionToggleModSystem.GetWornNightVisionSlot(capi.World?.Player)?.Itemstack;
-            if (stack?.Collectible is not ItemNightvisiondevice) return true;
-            if (NightVisionToggleModSystem.IsEnabled(stack)) return true;
+            // Always ask, even at full strength, so the ramp keeps tracking state changes.
+            // Only skip at exactly 1, since the ramp overshoots above 1 before settling.
+            float factor = NightVisionFade.GetFactor(capi);
+            if (factor == 1f) return;
 
-            capi.Render.ShaderUniforms.NightVisionStrength = 0;
-            return false;
+            capi.Render.ShaderUniforms.NightVisionStrength *= factor;
         }
     }
 

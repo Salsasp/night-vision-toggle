@@ -22,8 +22,6 @@ namespace NightVisionToggle
         /// <summary>Stack attribute holding the toggle state. Absent means on, so existing masks keep working.</summary>
         public const string EnabledAttribute = "nightVisionToggleEnabled";
 
-        // Placeholder sounds. Drop the real files at assets/nightvisiontoggle/sounds/<name>.ogg
-        // and they are picked up automatically. Until they exist the toggle is silent.
         public const string EnableSoundPath = "nightvisiontoggle:sounds/nightvision-toggle-on";
         public const string DisableSoundPath = "nightvisiontoggle:sounds/nightvision-toggle-off";
 
@@ -81,7 +79,11 @@ namespace NightVisionToggle
 
         public override void Dispose()
         {
-            if (api?.Side == EnumAppSide.Client) NightVisionRenderPatch.Capi = null;
+            if (api?.Side == EnumAppSide.Client)
+            {
+                NightVisionRenderPatch.Capi = null;
+                NightVisionFade.Reset();
+            }
 
             if (Interlocked.Decrement(ref loadedInstances) == 0)
             {

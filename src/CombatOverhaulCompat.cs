@@ -40,21 +40,16 @@ namespace NightVisionToggle
         }
 
         /// <summary>
-        /// Zeroes the strength Combat Overhaul is about to apply while the mask is toggled off.
-        /// It re-applies its cached value every frame, so letting the real value through again
-        /// is all that is needed to restore the effect.
+        /// Scales the strength Combat Overhaul is about to apply by the same fade factor the
+        /// vanilla path uses. It re-applies its cached value every frame, so the ramp animates
+        /// naturally and a factor of 1 leaves its behaviour untouched.
         /// </summary>
         public static void SetStrengthPrefix(ref float strength)
         {
-            if (strength <= 0) return;
-
             var capi = NightVisionRenderPatch.Capi;
             if (capi == null) return;
 
-            var stack = NightVisionToggleModSystem.GetWornNightVisionSlot(capi.World?.Player)?.Itemstack;
-            if (stack == null) return;
-
-            if (!NightVisionToggleModSystem.IsEnabled(stack)) strength = 0;
+            strength *= NightVisionFade.GetFactor(capi);
         }
     }
 }
