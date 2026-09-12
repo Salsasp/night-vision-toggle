@@ -2,7 +2,7 @@
   "type": "code",
   "modid": "nightvisiontoggle",
   "name": "Night Vision Mask Toggle",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "authors": [ "Salsa" ],
   "description": "A mod that adds a customizable keybind for toggling on and off night vision while wearing the night vision goggles. While toggled off, the goggles stop burning fuel.",
   "side": "universal",
